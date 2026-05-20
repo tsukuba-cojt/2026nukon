@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: nukon-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nukon}
+      POSTGRES_USER: ${POSTGRES_USER:-nukon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nukon_password}
+    ports:
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./server/scripts/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nukon} -d ${POSTGRES_DB:-nukon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: nukon-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-nukon_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-nukon_minio_password}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+  minio-create-bucket:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-nukon_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-nukon_minio_password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nukon-images}
+    entrypoint: ["/bin/sh", "/scripts/create-bucket.sh"]
+    volumes:
+      - ./server/scripts/minio:/scripts:ro
+
+volumes:
+  postgres-data:
+  minio-data:

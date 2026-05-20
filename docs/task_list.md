@@ -348,28 +348,28 @@
 
 ### 4.1 開発環境
 
-- [ ] **4.1.1** ルート `docker-compose.yml` で PostgreSQL + MinIO を起動可能にする
-- [ ] **4.1.2** MinIO 初期バケット（例: `nukon-images`）の作成スクリプト
-- [ ] **4.1.3** PostgreSQL の初期 DB / ユーザー作成スクリプト
+- [x] **4.1.1** ルート `docker-compose.yml` で PostgreSQL + MinIO を起動可能にする
+- [x] **4.1.2** MinIO 初期バケット（例: `nukon-images`）の作成スクリプト
+- [x] **4.1.3** PostgreSQL の初期 DB / ユーザー作成スクリプト
 
 ### 4.2 プロジェクト初期化
 
-- [ ] **4.2.1** `server/` に Go モジュール初期化 (`go mod init`)
-- [ ] **4.2.2** Gin / GORM / AWS SDK v2 / pgx 等の依存追加
-- [ ] **4.2.3** `cmd/server/main.go` でルーター起動の最小構成
-- [ ] **4.2.4** 設定読み込み（env or yaml）: DB接続情報・MinIO接続情報・X API キー
-- [ ] **4.2.5** 構造化ログ（zap or slog）と HTTP アクセスログのミドルウェア
+- [x] **4.2.1** `server/` に Go モジュール初期化 (`go mod init`)
+- [x] **4.2.2** Gin / GORM / AWS SDK v2 / pgx 等の依存追加
+- [x] **4.2.3** `cmd/server/main.go` でルーター起動の最小構成
+- [x] **4.2.4** 設定読み込み（env or yaml）: DB接続情報・MinIO接続情報・X API キー
+- [x] **4.2.5** 構造化ログ（zap or slog）と HTTP アクセスログのミドルウェア
 
 ### 4.3 データモデル・マイグレーション
 
 [§10.9.1](要求仕様.md#1091-サーバpostgresql) に対応。
 
-- [ ] **4.3.1** `users` テーブルのモデル + マイグレーション
-- [ ] **4.3.2** `cameras` テーブルのモデル + マイグレーション
-- [ ] **4.3.3** `sessions` テーブルのモデル + マイグレーション（token_hash 主キー）
-- [ ] **4.3.4** `images` テーブルのモデル + マイグレーション（kind / parent_image_id 含む）
-- [ ] **4.3.5** インデックス定義（`(user_id, captured_at DESC)` 等）
-- [ ] **4.3.6** GORM マイグレーション実行のための CLI / make target
+- [x] **4.3.1** `users` テーブルのモデル + マイグレーション
+- [x] **4.3.2** `cameras` テーブルのモデル + マイグレーション
+- [x] **4.3.3** `sessions` テーブルのモデル + マイグレーション（token_hash 主キー）
+- [x] **4.3.4** `images` テーブルのモデル + マイグレーション（kind / parent_image_id 含む）
+- [x] **4.3.5** インデックス定義（`(user_id, captured_at DESC)` 等）
+- [x] **4.3.6** GORM マイグレーション実行のための CLI / make target
 
 ### 4.4 認証・セッション
 
@@ -393,14 +393,14 @@
 
 ### 4.6 エラー・運用
 
-- [ ] **4.6.1** RFC 7807 Problem Details 形式のエラーレスポンス共通ヘルパー
-- [ ] **4.6.2** ヘルスチェック `GET /healthz`
+- [x] **4.6.1** RFC 7807 Problem Details 形式のエラーレスポンス共通ヘルパー
+- [x] **4.6.2** ヘルスチェック `GET /healthz`
 - [ ] **4.6.3** TLS 化（自己署名証明書 + ローカル CA、家サーバ運用）
 - [ ] **4.6.4** Dockerfile 作成
 
 ### 4.7 サーバテスト
 
-- [ ] **4.7.1** ユニットテスト: トークンハッシュ / ページネーション
+- [x] **4.7.1** ユニットテスト: トークンハッシュ / ページネーション
 - [ ] **4.7.2** 統合テスト: testcontainers で PG + MinIO を立ててエンドポイント疎通
 
 ---
