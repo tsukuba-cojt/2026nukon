@@ -55,9 +55,12 @@ HW（基板・筐体）から OS、ファームウェア、サーバ、スマホ
 ```
 2026nukon/
 ├── docs/              # 要求仕様書・タスクリスト・設計メモ
-├── HW/                # 回路図 (KiCad) と筐体 (3D CAD) のリビジョン管理
-├── FW/                # メインカメラのファームウェア (Rust)
-├── SW/                # サーバ・アプリのソフトウェア
+├── server/            # Go + Gin API サーバ
+├── camera/            # Raspberry Pi 側 Rust FW
+├── submodule/         # ESP32 側 Embedded Rust FW
+├── app/               # Tauri 2.x + React アプリ
+├── os/                # Raspberry Pi OS カスタムイメージ
+├── hw/                # PCB・筐体・BOM・製造メモ
 └── README.md
 ```
 
@@ -68,6 +71,8 @@ HW（基板・筐体）から OS、ファームウェア、サーバ、スマホ
 - [要求仕様書](docs/要求仕様.md) — 機能要件・非機能要件・データ仕様・API・BLE プロトコルなど
 - [要件定義書 v1](docs/requirements-1.md) — 背景・目的・スコープ
 - [タスクリスト](docs/task_list.md) — フェーズ別の実装タスク
+- [BLE UUID 定義](docs/ble-uuid.md) — GATT Service / Characteristic UUID の固定値
+- [BLE ペイロード仕様](docs/ble-payload.md) — BLE の固定長バイナリ仕様
 - [うなぎ定義書](docs/unagi.md) — 約束破りペナルティのルール
 
 ## 開発の進め方
