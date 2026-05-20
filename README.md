@@ -94,6 +94,25 @@ HW（基板・筐体）から OS、ファームウェア、サーバ、スマホ
 
 ローカルの [docs/task_list.md](docs/task_list.md) は設計メモ兼バックアップとして扱い、作業が終わったら Addness 側の該当タスクも完了にする。
 
+## 開発補助ツール
+
+このリポジトリ向けに以下を入れている。
+
+- `air` (`github.com/air-verse/air`): Go サーバのホットリロード
+- `staticcheck`: Go の lint
+- `mc` (`minio-mc`): MinIO バケットとオブジェクトの確認
+- Bruno / `bru`: REST API コレクションの管理と CLI 実行
+
+よく使うコマンド:
+
+```sh
+make server-dev     # Go サーバをホットリロード付きで起動
+make server-lint    # Go lint
+make workflow-lint  # GitHub Actions workflow lint
+make minio-ls       # ローカル MinIO の nukon-images を一覧
+make api-test       # Bruno の API コレクションを実行
+```
+
 ## 非機能目標
 
 - 電源 ON から撮影可能まで **10 秒以内**

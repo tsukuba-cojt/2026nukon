@@ -5,12 +5,15 @@ Thumbs.db
 *.swo
 .idea/
 .vscode/
+.claude/
 
 # Logs and local env
 *.log
 .env
 .env.*
 !.env.example
+.staticcheck-home/
+.mc/
 
 # Go
 bin/
