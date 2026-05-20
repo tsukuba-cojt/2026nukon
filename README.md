@@ -83,6 +83,17 @@ HW（基板・筐体）から OS、ファームウェア、サーバ、スマホ
 
 詳細マイルストーンと各タスクは [docs/task_list.md](docs/task_list.md) を参照。
 
+## タスク管理
+
+このリポジトリのタスクは Addness にも登録している。最新の担当・完了状態・階層は Addness を確認する。
+
+```sh
+/Users/bearwash/.local/bin/addness goal search "nukon"
+/Users/bearwash/.local/bin/addness goal tree <goal-id>
+```
+
+ローカルの [docs/task_list.md](docs/task_list.md) は設計メモ兼バックアップとして扱い、作業が終わったら Addness 側の該当タスクも完了にする。
+
 ## 非機能目標
 
 - 電源 ON から撮影可能まで **10 秒以内**
