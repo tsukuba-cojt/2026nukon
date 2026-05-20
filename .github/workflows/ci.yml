@@ -70,6 +70,33 @@ jobs:
       - name: Show dependency status
         run: docker compose ps
 
+      - name: Wait for dependencies
+        run: |
+          for _ in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U nukon -d nukon; then
+              break
+            fi
+            sleep 1
+          done
+
+          docker compose exec -T postgres pg_isready -U nukon -d nukon
+
+          bucket_container="$(docker compose ps -q minio-create-bucket)"
+          for _ in {1..30}; do
+            status="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$bucket_container")"
+            if [ "$status" = "exited 0" ]; then
+              exit 0
+            fi
+            if [[ "$status" == exited\ * ]]; then
+              docker compose logs minio minio-create-bucket
+              exit 1
+            fi
+            sleep 1
+          done
+
+          docker compose logs minio minio-create-bucket
+          exit 1
+
       - name: Run migrations
         run: make server-migrate
 
