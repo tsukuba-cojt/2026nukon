@@ -23,7 +23,8 @@
   - ピントリング用
   - https://www.switch-science.com/products/3493
 - 近接センサー
-  - 要検討
+  - ToFを採用/UARTで通信
+  - https://akizukidenshi.com/catalog/g/g131303/
 - 液晶
   - 3.5インチ液晶/w 静電容量タッチスクリーン
   - https://www.switch-science.com/collections/waveshare/products/10952
