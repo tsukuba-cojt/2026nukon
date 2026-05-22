@@ -1,0 +1,32 @@
+# 現時点で使う部品リスト
+
+- Raspbery Pi 4
+  - Ultra-Coinsから調達
+- EVFモジュール
+  - https://ja.aliexpress.com/item/1005008653229101.html?spm=a2g0o.productlist.main.1.3745574eXuj25d&algo_pvid=9d03c002-4144-479c-bfc1-fc4f49322e25&algo_exp_id=9d03c002-4144-479c-bfc1-fc4f49322e25-0&pdp_ext_f=%7B%22order%22%3A%2217%22%2C%22spu_best_type%22%3A%22price%22%2C%22eval%22%3A%221%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21JPY%2112966%2112966%21%21%21545.26%21545.26%21%402140f53817792513131013201ee745%2112000046107015340%21sea%21JP%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3Ada32b170%3Bm03_new_user%3A-29895&curPageLogUid=rph4uuhBRPzY&utparam-url=scene%3Asearch%7Cquery_from%3A%7Cx_object_id%3A1005008653229101%7C_p_origin_prod%3A
+- カメラモジュール
+  - https://www.arducam.com/arducam-1-1-32-64mp-autofocus-camera-module-for-raspebrry-pi.html
+- シャッターボタン
+  - https://eleshop.jp/shop/g/gP5212A/
+  - 押し込みが浅すぎたら別のを検討
+- タクトスイッチ
+  - https://akizukidenshi.com/catalog/g/g108081/
+  - 10個くらいかね
+- スライドスイッチ
+  - https://akizukidenshi.com/catalog/g/g113989/
+  - 電源と動画/写真の切り替えに使うかも？
+- BMC
+  - https://www.waveshare.com/ups-hat-e.htm
+  - デカいので結構改造がいる
+  - バッテリーボックスを取り外して使う
+- ロータリーエンコーダ
+  - ピントリング用
+  - https://www.switch-science.com/products/3493
+- 近接センサー
+  - 要検討
+- 液晶
+  - 3.5インチ液晶/w 静電容量タッチスクリーン
+  - https://www.switch-science.com/collections/waveshare/products/10952
+- 諸々の統合マイコン
+  - Seeeduino XIAO
+  - https://akizukidenshi.com/catalog/g/g115178/
