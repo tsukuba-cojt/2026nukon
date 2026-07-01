@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Study Glass</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="system-bar">
+        <div>
+          <p class="eyebrow">Study Glass</p>
+          <h1>Metaglass Vision</h1>
+        </div>
+        <div class="signal-strip" aria-label="Capture state">
+          <span id="camera-state">Starting</span>
+          <span id="last-trigger">No trigger</span>
+          <span>Voice ready</span>
+        </div>
+      </header>
+
+      <section class="viewfinder" aria-label="Camera preview">
+        <div class="preview-wrap">
+          <video id="camera-preview" playsinline muted></video>
+          <div class="reticle" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="scanline" aria-hidden="true"></div>
+          <div class="preview-footer">
+            <span>Live frame</span>
+            <strong id="last-captured-at">Waiting for capture</strong>
+          </div>
+        </div>
+      </section>
+
+      <aside class="command-panel" aria-label="Vision prompt controls">
+        <section class="prompt-card">
+          <div class="section-header">
+            <p class="eyebrow">Prompt</p>
+            <span>Image + instruction</span>
+          </div>
+          <textarea
+            id="prompt"
+            rows="8"
+            placeholder="ここに任意のプロンプトを入力してください。例: この数式の次の一手だけ教えて。"
+          >この画像を見て、重要な点を簡潔に説明してください。</textarea>
+
+          <div class="knowledge-drop" id="knowledge-drop">
+            <div>
+              <p class="eyebrow">Reference files</p>
+              <span>PDF, Office, images, data</span>
+            </div>
+            <label class="file-button" for="knowledge-files">Attach</label>
+            <input id="knowledge-files" type="file" multiple />
+          </div>
+          <ul id="knowledge-list" class="knowledge-list"></ul>
+
+          <button id="capture-button" class="capture-button" type="button">
+            Capture and ask
+          </button>
+          <p id="status-line">Starting camera...</p>
+        </section>
+
+        <section class="settings-card">
+          <label class="field" for="model">
+            <span>Model</span>
+            <input id="model" value="gpt-4.1-mini" />
+          </label>
+          <div class="field readonly-field">
+            <span>Backend</span>
+            <p>Server proxy</p>
+          </div>
+        </section>
+
+        <section class="snapshot-card">
+          <div class="section-header">
+            <p class="eyebrow">Last frame</p>
+            <span>Captured preview</span>
+          </div>
+          <img id="captured-image" alt="Captured Metaglass frame" hidden />
+          <div class="empty-frame" aria-hidden="true">No image</div>
+        </section>
+      </aside>
+
+      <section id="result-panel" class="result-panel">
+        <div>
+          <p class="eyebrow">Spoken answer</p>
+          <h2>No answer yet</h2>
+        </div>
+        <p class="answer-text">
+          Press the Metaglass button, use Capture and ask, or press Space
+          outside text fields.
+        </p>
+      </section>
+
+      <canvas id="capture-canvas" hidden></canvas>
+    </main>
+  </body>
+</html>
