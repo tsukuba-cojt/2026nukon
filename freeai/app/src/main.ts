@@ -61,6 +61,7 @@ let cameraStream: MediaStream | null = null;
 let isProcessing = false;
 let lastCaptureStartedAt = 0;
 let referenceFiles: ReferenceFile[] = [];
+let referenceWarnings: string[] = [];
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => {
@@ -137,8 +138,8 @@ function renderKnowledgeList() {
 
 async function loadReferenceFiles(files: FileList | File[]) {
   const selectedFiles = Array.from(files).slice(0, MAX_REFERENCE_FILES);
-  const loadedFiles = await Promise.all(
-    selectedFiles.map(async (file) => {
+  const loadedResults = await Promise.allSettled(
+    selectedFiles.map(async (file): Promise<ReferenceFile> => {
       const rawText = await readReferenceFile(file);
       const text = rawText.slice(0, MAX_REFERENCE_CHARS_PER_FILE);
       const imageDataUrl = isImageFile(file) ? await readReferenceImage(file) : undefined;
@@ -152,15 +153,24 @@ async function loadReferenceFiles(files: FileList | File[]) {
     }),
   );
 
-  referenceFiles = loadedFiles.filter(
+  referenceWarnings = loadedResults
+    .map((result, index) => {
+      if (result.status === "fulfilled") return "";
+      return `${selectedFiles[index]?.name || "unknown"}: ${String(result.reason)}`;
+    })
+    .filter(Boolean);
+
+  referenceFiles = loadedResults
+    .filter((result): result is PromiseFulfilledResult<ReferenceFile> => result.status === "fulfilled")
+    .map((result) => result.value)
+    .filter(
     (file) => file.text.trim().length > 0 || file.imageDataUrl,
   );
   renderKnowledgeList();
-  setStatus(
-    referenceFiles.length
-      ? `Loaded ${referenceFiles.length} reference file(s).`
-      : "No readable text found in selected files.",
-  );
+  const warningSuffix = referenceWarnings.length ? ` ${referenceWarnings.length} file(s) failed.` : "";
+  setStatus(referenceFiles.length
+    ? `Loaded ${referenceFiles.length} reference file(s).${warningSuffix}`
+    : `No readable content found in selected files.${warningSuffix}`);
 }
 
 function isPdfFile(file: File) {
@@ -282,7 +292,7 @@ function xmlToReadableText(xml: string) {
 }
 
 async function readReferenceImage(file: File) {
-  const image = await createImageBitmap(file);
+  const image = await loadImageSource(file);
   const scale = Math.min(
     1,
     IMAGE_REFERENCE_EDGE / Math.max(image.width, image.height),
@@ -295,7 +305,9 @@ async function readReferenceImage(file: File) {
     throw new Error(`Could not process image file: ${file.name}`);
   }
   context.drawImage(image, 0, 0, imageCanvas.width, imageCanvas.height);
-  image.close();
+  if ("close" in image) {
+    image.close();
+  }
 
   const blob = await new Promise<Blob | null>((resolve) => {
     imageCanvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY);
@@ -306,6 +318,26 @@ async function readReferenceImage(file: File) {
   }
 
   return blobToDataUrl(blob);
+}
+
+async function loadImageSource(file: File): Promise<ImageBitmap | HTMLImageElement> {
+  if ("createImageBitmap" in window) {
+    try {
+      return await createImageBitmap(file);
+    } catch {
+      // iOS/WebView may reject some camera or HEIC-backed image blobs.
+    }
+  }
+
+  const dataUrl = await blobToDataUrl(file);
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image), { once: true });
+    image.addEventListener("error", () => reject(new Error(`Could not decode image file: ${file.name}`)), {
+      once: true,
+    });
+    image.src = dataUrl;
+  });
 }
 
 function renderResult(response: AskResponse) {

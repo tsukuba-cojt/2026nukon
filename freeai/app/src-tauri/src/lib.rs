@@ -52,6 +52,27 @@ struct ApiError {
     error: String,
 }
 
+fn read_config_value(name: &str, build_value: Option<&str>) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .or_else(|| build_value.map(ToOwned::to_owned))
+        .filter(|value| !value.trim().is_empty())
+}
+
+fn validate_runtime_config(api_url: &str, client_token: &Option<String>) {
+    let is_local_api = api_url.contains("127.0.0.1") || api_url.contains("localhost");
+
+    if cfg!(all(mobile, not(debug_assertions))) && is_local_api {
+        panic!(
+            "STUDY_GLASS_API_URL must point to an HTTPS production API for release mobile builds."
+        );
+    }
+
+    if cfg!(all(mobile, not(debug_assertions))) && client_token.is_none() {
+        panic!("STUDY_GLASS_CLIENT_TOKEN must be embedded for release mobile builds.");
+    }
+}
+
 #[tauri::command]
 async fn ask_llm_about_capture(
     request: AskRequest,
@@ -93,14 +114,14 @@ pub fn run() {
         .build()
         .expect("failed to build HTTP client");
 
-    let api_url = std::env::var("STUDY_GLASS_API_URL")
-        .ok()
-        .or_else(|| option_env!("STUDY_GLASS_API_URL").map(ToOwned::to_owned))
+    let api_url = read_config_value("STUDY_GLASS_API_URL", option_env!("STUDY_GLASS_API_URL"))
         .unwrap_or_else(|| DEFAULT_API_URL.into());
-    let client_token = std::env::var("STUDY_GLASS_CLIENT_TOKEN")
-        .ok()
-        .or_else(|| option_env!("STUDY_GLASS_CLIENT_TOKEN").map(ToOwned::to_owned))
-        .filter(|value| !value.trim().is_empty());
+    let client_token = read_config_value(
+        "STUDY_GLASS_CLIENT_TOKEN",
+        option_env!("STUDY_GLASS_CLIENT_TOKEN"),
+    );
+
+    validate_runtime_config(&api_url, &client_token);
 
     tauri::Builder::default()
         .manage(AppState {

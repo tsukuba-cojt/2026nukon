@@ -1,9 +1,15 @@
 import http from "node:http";
+import crypto from "node:crypto";
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
-const CLIENT_TOKEN = process.env.STUDY_GLASS_CLIENT_TOKEN || "";
+const CLIENT_TOKENS = (process.env.STUDY_GLASS_CLIENT_TOKENS || process.env.STUDY_GLASS_CLIENT_TOKEN || "")
+  .split(",")
+  .map((token) => token.trim())
+  .filter(Boolean);
+const ALLOW_UNAUTHENTICATED = process.env.STUDY_GLASS_ALLOW_UNAUTHENTICATED === "true";
+const TRUST_PROXY = process.env.TRUST_PROXY === "true";
 const MODEL_DEFAULT = process.env.OPENAI_MODEL_DEFAULT || "gpt-4.1-mini";
 
 const MAX_BODY_BYTES = 32 * 1024 * 1024;
@@ -16,6 +22,22 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_MAX_REQUESTS = 30;
 
 const rateBuckets = new Map();
+
+function assertProductionConfig() {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required.");
+  }
+
+  if (!CLIENT_TOKENS.length && !ALLOW_UNAUTHENTICATED) {
+    throw new Error(
+      "STUDY_GLASS_CLIENT_TOKEN or STUDY_GLASS_CLIENT_TOKENS is required. Set STUDY_GLASS_ALLOW_UNAUTHENTICATED=true only for local development.",
+    );
+  }
+
+  if (process.env.NODE_ENV === "production" && ALLOWED_ORIGIN === "*") {
+    throw new Error("ALLOWED_ORIGIN must be set to a concrete origin in production.");
+  }
+}
 
 function corsHeaders() {
   return {
@@ -39,15 +61,22 @@ function trimChars(value, maxChars) {
 }
 
 function clientIp(request) {
-  return (
-    request.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    request.socket.remoteAddress ||
-    "unknown"
-  );
+  if (TRUST_PROXY) {
+    return request.headers["x-forwarded-for"]?.split(",")[0]?.trim() || request.socket.remoteAddress || "unknown";
+  }
+  return request.socket.remoteAddress || "unknown";
+}
+
+function rateLimitKey(request) {
+  const auth = request.headers.authorization || "";
+  if (auth.startsWith("Bearer ")) {
+    return `token:${auth.slice("Bearer ".length, "Bearer ".length + 18)}`;
+  }
+  return `ip:${clientIp(request)}`;
 }
 
 function checkRateLimit(request) {
-  const key = clientIp(request);
+  const key = rateLimitKey(request);
   const now = Date.now();
   const bucket = rateBuckets.get(key);
 
@@ -61,8 +90,11 @@ function checkRateLimit(request) {
 }
 
 function authorize(request) {
-  if (!CLIENT_TOKEN) return true;
-  return request.headers.authorization === `Bearer ${CLIENT_TOKEN}`;
+  if (!CLIENT_TOKENS.length) return ALLOW_UNAUTHENTICATED;
+  const authorization = request.headers.authorization || "";
+  if (!authorization.startsWith("Bearer ")) return false;
+  const token = authorization.slice("Bearer ".length);
+  return CLIENT_TOKENS.includes(token);
 }
 
 async function readBody(request) {
@@ -81,8 +113,8 @@ async function readBody(request) {
 }
 
 function validateDataUrl(label, value) {
-  if (typeof value !== "string" || !value.startsWith("data:image/")) {
-    throw new Error(`${label} must be an image data URL.`);
+  if (typeof value !== "string" || !/^data:image\/(?:jpeg|jpg|png|webp);base64,[a-z0-9+/=\s]+$/i.test(value)) {
+    throw new Error(`${label} must be a base64 JPEG, PNG, or WebP data URL.`);
   }
 
   if (value.length > MAX_IMAGE_DATA_URL_BYTES) {
@@ -115,10 +147,6 @@ function extractOutputText(body) {
 }
 
 async function askOpenAI(payload) {
-  if (!OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured on the API server.");
-  }
-
   const prompt = String(payload.prompt || "").trim();
   if (!prompt) {
     throw new Error("Prompt is required.");
@@ -177,7 +205,17 @@ async function askOpenAI(payload) {
 
     const responseText = await openaiResponse.text();
     if (!openaiResponse.ok) {
-      throw new Error(`OpenAI returned ${openaiResponse.status}: ${responseText}`);
+      const requestId = openaiResponse.headers.get("x-request-id") || "unknown";
+      console.error(
+        JSON.stringify({
+          level: "error",
+          event: "openai_error",
+          status: openaiResponse.status,
+          requestId,
+          body: responseText.slice(0, 2_000),
+        }),
+      );
+      throw new Error(`LLM request failed. request_id=${requestId}`);
     }
 
     const responseBody = JSON.parse(responseText);
@@ -230,9 +268,20 @@ const server = http.createServer(async (request, response) => {
     const result = await askOpenAI(payload);
     sendJson(response, 200, result);
   } catch (error) {
-    sendJson(response, 400, { error: String(error.message || error) });
+    const requestId = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    console.error(
+      JSON.stringify({
+        level: "error",
+        event: "request_failed",
+        requestId,
+        message: String(error.message || error),
+      }),
+    );
+    sendJson(response, 400, { error: `Request failed. request_id=${requestId}` });
   }
 });
+
+assertProductionConfig();
 
 server.listen(PORT, () => {
   console.log(`Study Glass API listening on :${PORT}`);
