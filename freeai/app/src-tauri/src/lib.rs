@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::State;
 
-const API_TIMEOUT_SECONDS: u64 = 25;
+// Generous because the Codex agent backend can take tens of seconds per answer.
+const API_TIMEOUT_SECONDS: u64 = 100;
 const DEFAULT_API_URL: &str = "http://127.0.0.1:8787";
 
 struct AppState {
@@ -20,6 +21,12 @@ struct AskRequest {
     image_data_url: String,
     trigger: CaptureTrigger,
     model: String,
+    // Runtime override from the app settings; build-time env baking does not
+    // survive the Xcode script phase reliably.
+    #[serde(default)]
+    api_url: Option<String>,
+    #[serde(default)]
+    client_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -78,10 +85,25 @@ async fn ask_llm_about_capture(
     request: AskRequest,
     state: State<'_, AppState>,
 ) -> Result<AskResponse, String> {
-    let endpoint = format!("{}/v1/ask", state.api_url.trim_end_matches('/'));
+    let api_url = request
+        .api_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(&state.api_url);
+    let endpoint = format!("{}/v1/ask", api_url.trim_end_matches('/'));
+
+    let token = request
+        .client_token
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .or_else(|| state.client_token.clone());
+
     let mut builder = state.http.post(endpoint).json(&request);
 
-    if let Some(token) = &state.client_token {
+    if let Some(token) = token {
         builder = builder.bearer_auth(token);
     }
 
@@ -130,6 +152,9 @@ pub fn run() {
             client_token,
         })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_photo_inbox::init())
+        .plugin(tauri_plugin_media_remote::init())
+        .plugin(tauri_plugin_glass_camera::init())
         .invoke_handler(tauri::generate_handler![ask_llm_about_capture])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

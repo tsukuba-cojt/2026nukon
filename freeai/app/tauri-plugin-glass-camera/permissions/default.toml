@@ -1,0 +1,13 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = """
+Allows connecting to the Meta glasses camera and capturing photos.
+"""
+permissions = [
+  "allow-start-glass",
+  "allow-stop-glass",
+  "allow-capture-photo",
+  "allow-start-registration",
+  "allow-registration-state",
+]

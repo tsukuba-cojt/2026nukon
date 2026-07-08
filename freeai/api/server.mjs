@@ -1,8 +1,19 @@
 import http from "node:http";
 import crypto from "node:crypto";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+// "codex" runs the OpenAI Codex agent through the local ChatGPT login
+// (`codex login`), so no API key billing is involved. "openai" keeps the
+// original Responses API path. Default: codex unless an API key is set.
+const BACKEND = (process.env.STUDY_GLASS_BACKEND || (OPENAI_API_KEY ? "openai" : "codex"))
+  .trim()
+  .toLowerCase();
+const CODEX_MODEL = (process.env.CODEX_MODEL || "").trim();
+const CODEX_TIMEOUT_MS = Number(process.env.CODEX_TIMEOUT_MS || 90_000);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 const CLIENT_TOKENS = (process.env.STUDY_GLASS_CLIENT_TOKENS || process.env.STUDY_GLASS_CLIENT_TOKEN || "")
   .split(",")
@@ -24,8 +35,12 @@ const RATE_MAX_REQUESTS = 30;
 const rateBuckets = new Map();
 
 function assertProductionConfig() {
-  if (!OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is required.");
+  if (!["openai", "codex"].includes(BACKEND)) {
+    throw new Error(`STUDY_GLASS_BACKEND must be "openai" or "codex", got "${BACKEND}".`);
+  }
+
+  if (BACKEND === "openai" && !OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required when STUDY_GLASS_BACKEND=openai.");
   }
 
   if (!CLIENT_TOKENS.length && !ALLOW_UNAUTHENTICATED) {
@@ -236,6 +251,122 @@ async function askOpenAI(payload) {
   }
 }
 
+let codexClientPromise = null;
+
+function codexClient() {
+  if (!codexClientPromise) {
+    codexClientPromise = import("@openai/codex-sdk").then(({ Codex }) => {
+      const config = {
+        sandbox_mode: "read-only",
+        approval_policy: "never",
+      };
+      if (CODEX_MODEL) {
+        config.model = CODEX_MODEL;
+      }
+      return new Codex({ config });
+    });
+  }
+  return codexClientPromise;
+}
+
+function dataUrlToBuffer(dataUrl) {
+  const separator = dataUrl.indexOf(",");
+  return Buffer.from(dataUrl.slice(separator + 1), "base64");
+}
+
+function dataUrlExtension(dataUrl) {
+  if (dataUrl.startsWith("data:image/png")) return "png";
+  if (dataUrl.startsWith("data:image/webp")) return "webp";
+  return "jpg";
+}
+
+async function writeDataUrlFile(directory, baseName, dataUrl) {
+  const filePath = path.join(directory, `${baseName}.${dataUrlExtension(dataUrl)}`);
+  await writeFile(filePath, dataUrlToBuffer(dataUrl));
+  return filePath;
+}
+
+function withTimeout(promise, milliseconds, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), milliseconds);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function buildCodexPrompt(payload) {
+  return [
+    "You are answering a question about the attached photo, captured from smart glasses.",
+    "Answer from the attached images and reference text only. Do not run commands, do not read or write files, do not browse the file system.",
+    "The answer is read aloud by TTS, so keep it short, plain, and speakable.",
+    "",
+    buildPrompt(payload),
+  ].join("\n");
+}
+
+async function askCodex(payload) {
+  const prompt = String(payload.prompt || "").trim();
+  if (!prompt) {
+    throw new Error("Prompt is required.");
+  }
+
+  validateDataUrl("imageDataUrl", payload.imageDataUrl);
+
+  const referenceImages = Array.isArray(payload.referenceImages)
+    ? payload.referenceImages.slice(0, MAX_REFERENCE_IMAGES)
+    : [];
+
+  for (const image of referenceImages) {
+    validateDataUrl(`reference image ${image.name || ""}`.trim(), image.imageDataUrl);
+  }
+
+  const workDirectory = await mkdtemp(path.join(tmpdir(), "study-glass-"));
+
+  try {
+    const capturePath = await writeDataUrlFile(workDirectory, "capture", payload.imageDataUrl);
+    const referencePaths = [];
+    for (const [index, image] of referenceImages.entries()) {
+      referencePaths.push(
+        await writeDataUrlFile(workDirectory, `reference-${index + 1}`, image.imageDataUrl),
+      );
+    }
+
+    const codex = await codexClient();
+    const thread = codex.startThread({
+      workingDirectory: workDirectory,
+      skipGitRepoCheck: true,
+    });
+
+    const turn = await withTimeout(
+      thread.run([
+        { type: "text", text: buildCodexPrompt(payload) },
+        { type: "local_image", path: capturePath },
+        ...referencePaths.map((referencePath) => ({
+          type: "local_image",
+          path: referencePath,
+        })),
+      ]),
+      CODEX_TIMEOUT_MS,
+      "Codex request timed out.",
+    );
+
+    const answer = String(turn.finalResponse || "").trim();
+    if (!answer) {
+      throw new Error("Codex did not return a final response.");
+    }
+
+    return {
+      answer,
+      model: CODEX_MODEL || "codex",
+      capturedAt: new Date().toISOString(),
+      trigger: payload.trigger || "app_button",
+      usedFallback: false,
+    };
+  } finally {
+    rm(workDirectory, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 const server = http.createServer(async (request, response) => {
   if (request.method === "OPTIONS") {
     response.writeHead(204, corsHeaders());
@@ -264,8 +395,25 @@ const server = http.createServer(async (request, response) => {
   }
 
   try {
+    const startedAt = Date.now();
     const payload = await readBody(request);
-    const result = await askOpenAI(payload);
+    console.log(
+      JSON.stringify({
+        level: "info",
+        event: "ask_received",
+        trigger: payload.trigger || "unknown",
+        imageKb: Math.round(String(payload.imageDataUrl || "").length / 1366),
+      }),
+    );
+    const result = BACKEND === "codex" ? await askCodex(payload) : await askOpenAI(payload);
+    console.log(
+      JSON.stringify({
+        level: "info",
+        event: "ask_answered",
+        elapsedMs: Date.now() - startedAt,
+        answerChars: result.answer.length,
+      }),
+    );
     sendJson(response, 200, result);
   } catch (error) {
     const requestId = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
@@ -284,5 +432,5 @@ const server = http.createServer(async (request, response) => {
 assertProductionConfig();
 
 server.listen(PORT, () => {
-  console.log(`Study Glass API listening on :${PORT}`);
+  console.log(`Study Glass API listening on :${PORT} (backend: ${BACKEND})`);
 });

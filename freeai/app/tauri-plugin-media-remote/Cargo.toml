@@ -1,0 +1,19 @@
+[package]
+name = "tauri-plugin-media-remote"
+version = "0.1.0"
+description = "Hijacks Bluetooth media keys (glasses touchpad taps) as capture triggers by playing silent audio"
+authors = ["Nukon"]
+edition = "2021"
+links = "tauri-plugin-media-remote"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = "2"
+thiserror = "2"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+tauri = { version = "2", features = ["wry"] }

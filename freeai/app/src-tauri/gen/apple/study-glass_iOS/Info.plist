@@ -16,12 +16,48 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.nukon.studyglass</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>studyglass</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>0.1.0</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>MWDAT</key>
+	<dict>
+		<key>AppLinkURLScheme</key>
+		<string>studyglass://</string>
+		<key>TeamID</key>
+		<string>$(DEVELOPMENT_TEAM)</string>
+	</dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Ray-Ban Metaグラスと接続するために使用します。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_bonjour._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Study Glass captures the Metaglass camera view so your prompt can be answered by the selected LLM.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>グラスとWi-Fi経由で接続して映像を受信するために使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Study Glass watches for new photos imported from your Ray-Ban Meta glasses so they can be answered by the selected LLM.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

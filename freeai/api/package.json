@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "start:env": "node --env-file=.env server.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "^0.143.0"
   }
 }

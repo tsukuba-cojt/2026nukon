@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -12,18 +12,24 @@
       <header class="system-bar">
         <div>
           <p class="eyebrow">Study Glass</p>
-          <h1>Metaglass Vision</h1>
+          <h1>タップで撮って、答えを聞く</h1>
         </div>
-        <div class="signal-strip" aria-label="Capture state">
-          <span id="camera-state">Starting</span>
-          <span id="last-trigger">No trigger</span>
-          <span>Voice ready</span>
+        <div class="signal-strip" aria-label="稼働ステータス">
+          <span id="run-state">停止中</span>
+          <span id="last-trigger">未実行</span>
+          <span>音声準備OK</span>
         </div>
       </header>
 
-      <section class="viewfinder" aria-label="Camera preview">
+      <section class="viewfinder" aria-label="カメラプレビュー">
         <div class="preview-wrap">
-          <video id="camera-preview" playsinline muted></video>
+          <img id="inbox-photo" alt="グラスで撮影した写真" hidden />
+          <div class="stage-empty" id="stage-empty">
+            <p class="eyebrow">メタグラス</p>
+            <p id="stage-message">
+              「開始する」を押すとグラスのカメラに接続します。
+            </p>
+          </div>
           <div class="reticle" aria-hidden="true">
             <span></span>
             <span></span>
@@ -32,73 +38,80 @@
           </div>
           <div class="scanline" aria-hidden="true"></div>
           <div class="preview-footer">
-            <span>Live frame</span>
-            <strong id="last-captured-at">Waiting for capture</strong>
+            <span>グラスの撮影画像</span>
+            <strong id="last-captured-at">撮影待ち</strong>
           </div>
         </div>
       </section>
 
-      <aside class="command-panel" aria-label="Vision prompt controls">
+      <aside class="command-panel" aria-label="質問設定">
         <section class="prompt-card">
           <div class="section-header">
-            <p class="eyebrow">Prompt</p>
-            <span>Image + instruction</span>
+            <p class="eyebrow">プロンプト</p>
+            <span>撮った画像と一緒に送る指示</span>
           </div>
           <textarea
             id="prompt"
             rows="8"
             placeholder="ここに任意のプロンプトを入力してください。例: この数式の次の一手だけ教えて。"
-          >この画像を見て、重要な点を簡潔に説明してください。</textarea>
+          >この写真に写っている問題の解き方と答えを、耳で聞いて分かるように簡潔に日本語で説明してください。</textarea>
 
           <div class="knowledge-drop" id="knowledge-drop">
             <div>
-              <p class="eyebrow">Reference files</p>
-              <span>PDF, Office, images, text/data</span>
+              <p class="eyebrow">参考資料</p>
+              <span>PDF・Office・画像・テキスト</span>
             </div>
-            <label class="file-button" for="knowledge-files">Attach</label>
+            <label class="file-button" for="knowledge-files">追加</label>
             <input id="knowledge-files" type="file" multiple />
           </div>
           <ul id="knowledge-list" class="knowledge-list"></ul>
 
-          <button id="capture-button" class="capture-button" type="button">
-            Capture and ask
+          <button
+            id="session-toggle"
+            class="capture-button watch-toggle"
+            type="button"
+            aria-pressed="false"
+          >
+            開始する
           </button>
-          <p id="status-line">Starting camera...</p>
+          <p id="status-line">スマホを問題が見える位置に置いて「開始する」を押してください。</p>
         </section>
 
         <section class="settings-card">
           <label class="field" for="model">
-            <span>Model</span>
+            <span>モデル</span>
             <input id="model" value="gpt-4.1-mini" />
           </label>
-          <div class="field readonly-field">
-            <span>Backend</span>
-            <p>Server proxy</p>
+          <label class="field" for="api-url">
+            <span>APIサーバー</span>
+            <input id="api-url" placeholder="http://192.168.17.52:8787" />
+          </label>
+          <label class="field glass-watch-field" for="api-token">
+            <span>APIトークン</span>
+            <input id="api-token" placeholder="サーバーと同じトークン" />
+          </label>
+          <div class="field glass-watch-field">
+            <span>グラス写真監視（予備モード）</span>
+            <button id="glass-watch-toggle" class="secondary-toggle" type="button" aria-pressed="false">
+              監視を開始
+            </button>
           </div>
-        </section>
-
-        <section class="snapshot-card">
-          <div class="section-header">
-            <p class="eyebrow">Last frame</p>
-            <span>Captured preview</span>
-          </div>
-          <img id="captured-image" alt="Captured Metaglass frame" hidden />
-          <div class="empty-frame" aria-hidden="true">No image</div>
+          <p class="watch-hint glass-watch-field">
+            使い方: 開始する → グラスのタッチパッドを<strong>前後にスワイプ（音量変更）</strong>
+            またはこの画面の映像部分をタップ → グラスのカメラで撮影し、
+            回答をグラスのスピーカーで読み上げます。初回はMeta AIアプリで連携の承認が必要です。
+          </p>
         </section>
       </aside>
 
       <section id="result-panel" class="result-panel">
         <div>
-          <p class="eyebrow">Spoken answer</p>
-          <h2>No answer yet</h2>
+          <p class="eyebrow">読み上げる回答</p>
+          <h2>まだ回答はありません</h2>
         </div>
-        <p class="answer-text">
-          Press the Metaglass button, use Capture and ask, or press Space
-          outside text fields.
-        </p>
+        <p class="answer-text">「開始する」を押してから、グラスのタッチパッドをタップしてください。</p>
       </section>
 
-      <canvas id="capture-canvas" hidden></canvas>
     </main>
   </body>
 </html>

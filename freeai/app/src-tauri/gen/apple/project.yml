@@ -2,7 +2,7 @@ name: study-glass
 options:
   bundleIdPrefix: com.nukon.studyglass
   deploymentTarget:
-    iOS: 14.0
+    iOS: "15.2"
 fileGroups: [../../src]
 configs:
   debug: debug
@@ -31,6 +31,7 @@ targets:
       - path: Sources
       - path: Assets.xcassets
       - path: Externals
+        buildPhase: none
       - path: study-glass_iOS
       - path: assets
         buildPhase: resources
@@ -40,6 +41,19 @@ targets:
       path: study-glass_iOS/Info.plist
       properties:
         LSRequiresIPhoneOS: true
+        NSCameraUsageDescription: Study Glass captures the Metaglass camera view so your prompt can be answered by the selected LLM.
+        NSPhotoLibraryUsageDescription: Study Glass watches for new photos imported from your Ray-Ban Meta glasses so they can be answered by the selected LLM.
+        NSBluetoothAlwaysUsageDescription: Ray-Ban Metaグラスと接続するために使用します。
+        NSLocalNetworkUsageDescription: グラスとWi-Fi経由で接続して映像を受信するために使用します。
+        NSBonjourServices: [_bonjour._tcp]
+        UIBackgroundModes: [processing, bluetooth-central, bluetooth-peripheral]
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.nukon.studyglass
+            CFBundleURLSchemes: [studyglass]
+        MWDAT:
+          AppLinkURLScheme: "studyglass://"
+          TeamID: $(DEVELOPMENT_TEAM)
         UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64, metal]
         UISupportedInterfaceOrientations:
@@ -61,17 +75,25 @@ targets:
         RUST_LOG: info
     settings:
       base:
+        DEVELOPMENT_TEAM: 9BW3AA9WHX
+        CODE_SIGN_STYLE: Automatic
         ENABLE_BITCODE: false
         ARCHS: [arm64]
         VALID_ARCHS: arm64 
         LIBRARY_SEARCH_PATHS[arch=x86_64]: $(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)
         LIBRARY_SEARCH_PATHS[arch=arm64]: $(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)
-        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: true
+        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: false
         EXCLUDED_ARCHS[sdk=iphoneos*]: x86_64
       groups: [app]
     dependencies:
       - framework: libapp.a
         embed: false
+      - framework: ../../../tauri-plugin-glass-camera/ios/Frameworks/MWDATCore.framework
+        embed: true
+        codeSign: true
+      - framework: ../../../tauri-plugin-glass-camera/ios/Frameworks/MWDATCamera.framework
+        embed: true
+        codeSign: true
       - sdk: CoreGraphics.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework

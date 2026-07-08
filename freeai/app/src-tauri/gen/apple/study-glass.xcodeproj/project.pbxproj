@@ -7,23 +7,44 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B45D53527AAF60905CD72E0 /* MWDATCamera.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 2929E097113ECB1BD7538534 /* MWDATCamera.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		129B15BCE5B8C38E0CB7C83A /* MWDATCamera.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2929E097113ECB1BD7538534 /* MWDATCamera.framework */; };
 		223C6C01C04F8F4032F8DF1B /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 423156995C7A76624035B8AC /* assets */; };
 		4B2AA6313A778F5E57F4BA30 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CA618D7DFF5680E2EA9D6FA /* WebKit.framework */; };
 		51E5C4EED9D88AA96564054C /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CEE2EEED51F0257C30825214 /* libapp.a */; };
 		57F58BED5510B2A1E26CC681 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62E7B5206D738B66692DB90F /* MetalKit.framework */; };
 		61B8F1E249A5717E8DB0F36B /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42DFFE6DBD074088D33C3708 /* UIKit.framework */; };
 		7FB58E2C4B4553D89E9F442A /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93C26FA94C63E00E0916662E /* CoreGraphics.framework */; };
+		88D369B34E4B7F49FAE9E782 /* MWDATCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF6332B70A59D8909AA3F097 /* MWDATCore.framework */; };
 		8B93258E9BA0EAB160C2CCF1 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FFEE44C07A3A79EC5FC7B06A /* Security.framework */; };
 		9DB09738819CA615B41D83AD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F86997DD76DC2289D0C996F1 /* Assets.xcassets */; };
 		C4F0D5ECA29DF07140BB720E /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = E4DBAD673767E194205DAF13 /* main.mm */; };
+		D421E2477CF9AF6E4EE3283B /* MWDATCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AF6332B70A59D8909AA3F097 /* MWDATCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EC43C5112884D0322CE65BC8 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D4DAF7F2A33F960A1C2595D2 /* QuartzCore.framework */; };
 		F2FD8F4D21077A053E221249 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC6B0DFF8DD8E0211C5826E0 /* Metal.framework */; };
 		FFE6B06D6E1ED05B8CD64D6F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F3C86593ED0429959EAEF056 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		5A725D99264C4932B5D9CE4C /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D421E2477CF9AF6E4EE3283B /* MWDATCore.framework in Embed Frameworks */,
+				0B45D53527AAF60905CD72E0 /* MWDATCamera.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		1447041B2216D46ED79C7024 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		2929E097113ECB1BD7538534 /* MWDATCamera.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MWDATCamera.framework; path = "../../../tauri-plugin-glass-camera/ios/Frameworks/MWDATCamera.framework"; sourceTree = "<group>"; };
 		2F3C2167295A381F6A4F8960 /* study-glass_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "study-glass_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		393F144F7DE30A4B5A19D76E /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		423156995C7A76624035B8AC /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		42DFFE6DBD074088D33C3708 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		56620AF6B47099BBA15CC2EC /* study-glass_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "study-glass_iOS.entitlements"; sourceTree = "<group>"; };
@@ -31,6 +52,8 @@
 		6CA618D7DFF5680E2EA9D6FA /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		93C26FA94C63E00E0916662E /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		AC6B0DFF8DD8E0211C5826E0 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		AF6332B70A59D8909AA3F097 /* MWDATCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MWDATCore.framework; path = "../../../tauri-plugin-glass-camera/ios/Frameworks/MWDATCore.framework"; sourceTree = "<group>"; };
+		B983E75B63C5496DADA1C1BA /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		BC8DB079B99BB3710C569B35 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		CEE2EEED51F0257C30825214 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		D4DAF7F2A33F960A1C2595D2 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -48,6 +71,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				51E5C4EED9D88AA96564054C /* libapp.a in Frameworks */,
+				88D369B34E4B7F49FAE9E782 /* MWDATCore.framework in Frameworks */,
+				129B15BCE5B8C38E0CB7C83A /* MWDATCamera.framework in Frameworks */,
 				7FB58E2C4B4553D89E9F442A /* CoreGraphics.framework in Frameworks */,
 				F2FD8F4D21077A053E221249 /* Metal.framework in Frameworks */,
 				57F58BED5510B2A1E26CC681 /* MetalKit.framework in Frameworks */,
@@ -101,6 +126,14 @@
 			);
 			sourceTree = "<group>";
 		};
+		8106333BE4C02B7596552CD6 /* debug */ = {
+			isa = PBXGroup;
+			children = (
+				393F144F7DE30A4B5A19D76E /* libapp.a */,
+			);
+			path = debug;
+			sourceTree = "<group>";
+		};
 		954EE72808CE1D25ED4659C5 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -108,6 +141,8 @@
 				CEE2EEED51F0257C30825214 /* libapp.a */,
 				AC6B0DFF8DD8E0211C5826E0 /* Metal.framework */,
 				62E7B5206D738B66692DB90F /* MetalKit.framework */,
+				2929E097113ECB1BD7538534 /* MWDATCamera.framework */,
+				AF6332B70A59D8909AA3F097 /* MWDATCore.framework */,
 				D4DAF7F2A33F960A1C2595D2 /* QuartzCore.framework */,
 				FFEE44C07A3A79EC5FC7B06A /* Security.framework */,
 				42DFFE6DBD074088D33C3708 /* UIKit.framework */,
@@ -122,6 +157,23 @@
 				BC8DB079B99BB3710C569B35 /* bindings.h */,
 			);
 			path = bindings;
+			sourceTree = "<group>";
+		};
+		BC0BAE59686C5D6E5DF5B4C7 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				8106333BE4C02B7596552CD6 /* debug */,
+				BD45935735D63F8C4C52AA5C /* release */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		BD45935735D63F8C4C52AA5C /* release */ = {
+			isa = PBXGroup;
+			children = (
+				B983E75B63C5496DADA1C1BA /* libapp.a */,
+			);
+			path = release;
 			sourceTree = "<group>";
 		};
 		C45C87711B668BAD9B957D59 /* study-glass */ = {
@@ -146,8 +198,16 @@
 		F927D6D2DC63A9CD15553035 /* Externals */ = {
 			isa = PBXGroup;
 			children = (
+				BC0BAE59686C5D6E5DF5B4C7 /* arm64 */,
 			);
 			path = Externals;
+			sourceTree = "<group>";
+		};
+		"TEMP_92B0CE88-78A1-4C14-9632-DBB2C9483AD7" /* x86_64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = x86_64;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -161,6 +221,7 @@
 				C3F0D8936F36A6849F5EA089 /* Sources */,
 				4AEBB7A1CAB3B144F343303A /* Resources */,
 				CE6FD4D59C5AEC83AEEA20CE /* Frameworks */,
+				5A725D99264C4932B5D9CE4C /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -182,6 +243,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					3B2F4E647CBC2CBBC66AE123 = {
+						DevelopmentTeam = 9BW3AA9WHX;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = B90FCC65391DECF861962CFE /* Build configuration list for PBXProject "study-glass" */;
@@ -303,7 +368,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -318,18 +383,21 @@
 		7C4411A7EDA87D4527FB32D4 /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				ARCHS = (
 					arm64,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "study-glass_iOS/study-glass_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9BW3AA9WHX;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\".\"",
+					"\"../../../tauri-plugin-glass-camera/ios/Frameworks\"",
 				);
 				INFOPLIST_FILE = "study-glass_iOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -391,7 +459,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -405,18 +473,21 @@
 		CB1205461562CED8693E8D5D /* release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				ARCHS = (
 					arm64,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "study-glass_iOS/study-glass_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9BW3AA9WHX;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\".\"",
+					"\"../../../tauri-plugin-glass-camera/ios/Frameworks\"",
 				);
 				INFOPLIST_FILE = "study-glass_iOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (

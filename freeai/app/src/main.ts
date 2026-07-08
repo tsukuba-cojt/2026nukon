@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 type CaptureTrigger = "metaglass_button" | "app_button" | "keyboard";
 
@@ -9,6 +9,8 @@ type AskRequest = {
   imageDataUrl: string;
   trigger: CaptureTrigger;
   model: string;
+  apiUrl?: string;
+  clientToken?: string;
 };
 
 type AskResponse = {
@@ -32,24 +34,45 @@ type ReferenceImage = {
   imageDataUrl: string;
 };
 
-const video = document.querySelector<HTMLVideoElement>("#camera-preview");
-const canvas = document.querySelector<HTMLCanvasElement>("#capture-canvas");
-const capturedImage = document.querySelector<HTMLImageElement>("#captured-image");
-const captureButton = document.querySelector<HTMLButtonElement>("#capture-button");
+type NewPhotoEvent = {
+  imageDataUrl: string;
+  takenAt?: number;
+  name?: string;
+  source: string;
+};
+
+type RemoteTapEvent = {
+  action: string;
+  at?: number;
+};
+
+type GlassEvent = {
+  type: "state" | "registration" | "photo" | "preview" | "error";
+  value?: string;
+  imageDataUrl?: string;
+  message?: string;
+};
+
+const inboxPhoto = document.querySelector<HTMLImageElement>("#inbox-photo");
+const stageEmpty = document.querySelector<HTMLElement>("#stage-empty");
+const stageMessage = document.querySelector<HTMLElement>("#stage-message");
+const runState = document.querySelector<HTMLElement>("#run-state");
 const promptInput = document.querySelector<HTMLTextAreaElement>("#prompt");
 const knowledgeDrop = document.querySelector<HTMLElement>("#knowledge-drop");
 const knowledgeInput = document.querySelector<HTMLInputElement>("#knowledge-files");
 const knowledgeList = document.querySelector<HTMLElement>("#knowledge-list");
 const modelInput = document.querySelector<HTMLInputElement>("#model");
+const apiUrlInput = document.querySelector<HTMLInputElement>("#api-url");
+const apiTokenInput = document.querySelector<HTMLInputElement>("#api-token");
 const statusLine = document.querySelector<HTMLElement>("#status-line");
+const sessionToggle = document.querySelector<HTMLButtonElement>("#session-toggle");
+const glassWatchToggle = document.querySelector<HTMLButtonElement>("#glass-watch-toggle");
 const resultPanel = document.querySelector<HTMLElement>("#result-panel");
 const lastTrigger = document.querySelector<HTMLElement>("#last-trigger");
 const lastCapturedAt = document.querySelector<HTMLElement>("#last-captured-at");
-const cameraState = document.querySelector<HTMLElement>("#camera-state");
 
-const MAX_CAPTURE_EDGE = 1600;
 const JPEG_QUALITY = 0.8;
-const CAPTURE_COOLDOWN_MS = 700;
+const TAP_COOLDOWN_MS = 1500;
 const MAX_REFERENCE_FILES = 5;
 const MAX_REFERENCE_CHARS_PER_FILE = 12_000;
 const MAX_REFERENCE_CHARS_TOTAL = 36_000;
@@ -57,11 +80,17 @@ const MAX_PDF_PAGES = 20;
 const MAX_REFERENCE_IMAGES = 3;
 const IMAGE_REFERENCE_EDGE = 1600;
 
-let cameraStream: MediaStream | null = null;
 let isProcessing = false;
 let lastCaptureStartedAt = 0;
 let referenceFiles: ReferenceFile[] = [];
 let referenceWarnings: string[] = [];
+let sessionActive = false;
+let glassWatchActive = false;
+let captureSource: "glass" | "phone" | null = null;
+let glassAwaitingRegistration = false;
+let glassStreaming = false;
+let pendingGlassCapture = false;
+let tapMonitorStarted = false;
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => {
@@ -83,9 +112,9 @@ function setStatus(message: string) {
 }
 
 function formatTrigger(trigger: CaptureTrigger) {
-  if (trigger === "metaglass_button") return "Metaglass";
-  if (trigger === "keyboard") return "Keyboard";
-  return "App button";
+  if (trigger === "metaglass_button") return "メタグラス";
+  if (trigger === "keyboard") return "キーボード";
+  return "アプリボタン";
 }
 
 function buildReferenceText() {
@@ -167,10 +196,10 @@ async function loadReferenceFiles(files: FileList | File[]) {
     (file) => file.text.trim().length > 0 || file.imageDataUrl,
   );
   renderKnowledgeList();
-  const warningSuffix = referenceWarnings.length ? ` ${referenceWarnings.length} file(s) failed.` : "";
+  const warningSuffix = referenceWarnings.length ? ` ${referenceWarnings.length}件の読み込みに失敗しました。` : "";
   setStatus(referenceFiles.length
-    ? `Loaded ${referenceFiles.length} reference file(s).${warningSuffix}`
-    : `No readable content found in selected files.${warningSuffix}`);
+    ? `参考資料を${referenceFiles.length}件読み込みました。${warningSuffix}`
+    : `選択したファイルから読み取れる内容がありませんでした。${warningSuffix}`);
 }
 
 function isPdfFile(file: File) {
@@ -302,7 +331,7 @@ async function readReferenceImage(file: File) {
   imageCanvas.height = Math.max(1, Math.round(image.height * scale));
   const context = imageCanvas.getContext("2d");
   if (!context) {
-    throw new Error(`Could not process image file: ${file.name}`);
+    throw new Error(`画像ファイルを処理できませんでした: ${file.name}`);
   }
   context.drawImage(image, 0, 0, imageCanvas.width, imageCanvas.height);
   if ("close" in image) {
@@ -314,7 +343,7 @@ async function readReferenceImage(file: File) {
   });
 
   if (!blob) {
-    throw new Error(`Could not encode image file: ${file.name}`);
+    throw new Error(`画像ファイルを変換できませんでした: ${file.name}`);
   }
 
   return blobToDataUrl(blob);
@@ -333,7 +362,7 @@ async function loadImageSource(file: File): Promise<ImageBitmap | HTMLImageEleme
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.addEventListener("load", () => resolve(image), { once: true });
-    image.addEventListener("error", () => reject(new Error(`Could not decode image file: ${file.name}`)), {
+    image.addEventListener("error", () => reject(new Error(`画像ファイルを読み込めませんでした: ${file.name}`)), {
       once: true,
     });
     image.src = dataUrl;
@@ -345,15 +374,15 @@ function renderResult(response: AskResponse) {
 
   resultPanel.innerHTML = `
     <div>
-      <p class="eyebrow">${response.usedFallback ? "Local fallback" : "LLM response"}</p>
-      <h2>Answer</h2>
+      <p class="eyebrow">${response.usedFallback ? "ローカル代替" : "AIの回答"}</p>
+      <h2>回答</h2>
       <dl class="result-meta">
         <div>
-          <dt>Model</dt>
+          <dt>モデル</dt>
           <dd>${escapeHtml(response.model)}</dd>
         </div>
         <div>
-          <dt>Trigger</dt>
+          <dt>きっかけ</dt>
           <dd>${formatTrigger(response.trigger)}</dd>
         </div>
       </dl>
@@ -361,7 +390,7 @@ function renderResult(response: AskResponse) {
     <p class="answer-text">${escapeHtml(response.answer)}</p>
   `;
   lastTrigger.textContent = formatTrigger(response.trigger);
-  lastCapturedAt.textContent = new Date(response.capturedAt).toLocaleString();
+  lastCapturedAt.textContent = new Date(response.capturedAt).toLocaleString("ja-JP");
 }
 
 function speakAnswer(text: string) {
@@ -388,28 +417,6 @@ function speakAnswer(text: string) {
   window.speechSynthesis.speak(utterance);
 }
 
-async function startCamera() {
-  if (!video || !cameraState) return;
-
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-      audio: false,
-    });
-    video.srcObject = cameraStream;
-    await video.play();
-    cameraState.textContent = "Ready";
-    setStatus("Ready for Metaglass button capture.");
-  } catch (error) {
-    cameraState.textContent = "Unavailable";
-    setStatus(`Camera permission or device failed: ${String(error)}`);
-  }
-}
-
 function blobToDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -419,76 +426,38 @@ function blobToDataUrl(blob: Blob) {
   });
 }
 
-async function captureFrame() {
-  if (!video || !canvas) {
-    throw new Error("Camera view is not mounted.");
-  }
-
-  if (!video.videoWidth || !video.videoHeight) {
-    throw new Error("Camera is not ready yet.");
-  }
-
-  const scale = Math.min(
-    1,
-    MAX_CAPTURE_EDGE / Math.max(video.videoWidth, video.videoHeight),
-  );
-  canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
-  canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Could not create capture context.");
-  }
-
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY);
-  });
-
-  if (!blob) {
-    throw new Error("Could not encode captured frame.");
-  }
-
-  return blobToDataUrl(blob);
-}
-
-async function captureAndAsk(trigger: CaptureTrigger) {
-  if (!captureButton || !promptInput || !modelInput) return;
+async function runAskPipeline(trigger: CaptureTrigger, getImage: () => Promise<string>) {
+  if (!promptInput || !modelInput) return;
 
   if (isProcessing) {
-    setStatus("A capture is already running.");
+    setStatus("処理中の質問があります。");
     return;
   }
 
   const now = Date.now();
-  if (now - lastCaptureStartedAt < CAPTURE_COOLDOWN_MS) {
-    setStatus("Capture is cooling down.");
+  if (now - lastCaptureStartedAt < TAP_COOLDOWN_MS) {
     return;
   }
 
   const prompt = promptInput.value.trim();
   if (!prompt) {
     promptInput.focus();
-    setStatus("Prompt is required.");
+    setStatus("プロンプトを入力してください。");
     return;
   }
 
   isProcessing = true;
   lastCaptureStartedAt = now;
-  captureButton.disabled = true;
-  setStatus("Capturing and compressing frame...");
 
   try {
-    const imageDataUrl = await captureFrame();
-    if (capturedImage) {
-      capturedImage.src = imageDataUrl;
-      capturedImage.hidden = false;
+    const imageDataUrl = await getImage();
+    if (lastCapturedAt) {
+      lastCapturedAt.textContent = new Date().toLocaleTimeString("ja-JP");
     }
 
     const approximateKilobytes = Math.round((imageDataUrl.length * 3) / 4 / 1024);
-    setStatus(`Sending optimized frame (${approximateKilobytes} KB) to LLM...`);
+    setStatus(`画像（${approximateKilobytes} KB）をAIに送信しています…`);
+
     const response = await invoke<AskResponse>("ask_llm_about_capture", {
       request: {
         prompt,
@@ -497,29 +466,288 @@ async function captureAndAsk(trigger: CaptureTrigger) {
         imageDataUrl,
         trigger,
         model: modelInput.value.trim() || "gpt-4.1-mini",
+        apiUrl: apiUrlInput?.value.trim() || undefined,
+        clientToken: apiTokenInput?.value.trim() || undefined,
       } satisfies AskRequest,
     });
 
     renderResult(response);
     speakAnswer(response.answer);
-    setStatus(
-      response.usedFallback
-        ? "Ready. Set an API key for real LLM output."
-        : "Ready. Speaking answer.",
-    );
+    setStatus("回答を読み上げています。次のタップを待っています。");
   } catch (error) {
-    setStatus(`Capture failed: ${String(error)}`);
+    setStatus(`送信に失敗しました: ${String(error)}`);
   } finally {
     isProcessing = false;
-    captureButton.disabled = false;
   }
 }
 
-function installMetaglassButtonBridge() {
-  window.addEventListener("metaglass-button-pressed", () => {
-    void captureAndAsk("metaglass_button");
-  });
+function renderSessionState() {
+  if (sessionToggle) {
+    sessionToggle.textContent = sessionActive ? "稼働中 … タップで停止" : "開始する";
+    sessionToggle.setAttribute("aria-pressed", sessionActive ? "true" : "false");
+  }
+  if (runState) {
+    runState.textContent = sessionActive ? "稼働中" : "停止中";
+  }
+}
 
+function showGlassPhoto(imageDataUrl: string) {
+  if (inboxPhoto) {
+    inboxPhoto.src = imageDataUrl;
+    inboxPhoto.hidden = false;
+  }
+  if (stageEmpty) {
+    stageEmpty.hidden = true;
+  }
+}
+
+function setStageMessage(message: string) {
+  if (stageMessage) {
+    stageMessage.textContent = message;
+  }
+}
+
+function handleGlassEvent(event: GlassEvent) {
+  if (event.type === "preview" && event.imageDataUrl) {
+    showGlassPhoto(event.imageDataUrl);
+    return;
+  }
+
+  if (event.type === "photo" && event.imageDataUrl) {
+    const imageDataUrl = event.imageDataUrl;
+    showGlassPhoto(imageDataUrl);
+    void runAskPipeline("metaglass_button", async () => {
+      setStatus("グラスの写真を受信しました。");
+      return imageDataUrl;
+    });
+    return;
+  }
+
+  if (event.type === "state") {
+    if (event.value === "streaming") {
+      glassStreaming = true;
+      // 映像確立前にオーディオセッションを触るとストリーム確立を妨げる
+      // ため、タップ/スワイプ監視はストリーミング開始後に起動する。
+      void startTapMonitor();
+      if (pendingGlassCapture) {
+        pendingGlassCapture = false;
+        setStatus("ストリーミング開始。予約していた撮影を実行します…");
+        void requestGlassPhoto();
+      } else {
+        setStatus("グラスカメラ接続完了。スワイプまたは画面タップで撮影します。");
+      }
+    } else if (event.value === "stopped") {
+      glassStreaming = false;
+      if (sessionActive && captureSource === "glass") {
+        setStatus("グラスカメラが停止しました。3秒後に自動で再接続します…");
+        setTimeout(() => {
+          if (sessionActive && !glassStreaming) {
+            // 前のセッションを完全に畳んでから接続し直す。後始末をせずに
+            // 再接続するとグラスのホットスポット参加が失敗しやすくなる。
+            void invoke("plugin:glass-camera|stop_glass")
+              .catch(() => {})
+              .then(() => connectGlassCamera());
+          }
+        }, 3000);
+      }
+    } else {
+      glassStreaming = false;
+      if (event.value) {
+        setStatus(`グラスカメラ状態: ${event.value}`);
+      }
+    }
+    return;
+  }
+
+  if (event.type === "registration") {
+    if (event.value === "registered" && glassAwaitingRegistration) {
+      glassAwaitingRegistration = false;
+      setStatus("グラス連携が承認されました。接続しています…");
+      void connectGlassCamera();
+    }
+    return;
+  }
+
+  if (event.type === "error" && event.message) {
+    setStatus(`グラスカメラ: ${event.message}`);
+  }
+}
+
+async function connectGlassCamera(): Promise<boolean> {
+  const channel = new Channel<GlassEvent>();
+  channel.onmessage = handleGlassEvent;
+
+  try {
+    await invoke("plugin:glass-camera|start_glass", { channel });
+    captureSource = "glass";
+    setStageMessage("グラスカメラに接続中です。タッチパッドをタップすると撮影します。");
+    return true;
+  } catch (error) {
+    if (String(error).includes("REGISTRATION_REQUIRED")) {
+      glassAwaitingRegistration = true;
+      setStatus("Meta AIアプリでこのアプリのグラス利用を承認してください。承認後に自動で接続します。");
+      setStageMessage("Meta AIアプリで連携を承認すると、ここにグラスの写真が表示されます。");
+      await invoke("plugin:glass-camera|start_registration").catch((registrationError) => {
+        setStatus(`グラス登録を開始できませんでした: ${String(registrationError)}`);
+      });
+      return false;
+    }
+    setStatus(`グラスカメラに接続できませんでした: ${String(error)}`);
+    await invoke("plugin:glass-camera|stop_glass").catch(() => {});
+    return false;
+  }
+}
+
+async function requestGlassPhoto() {
+  try {
+    const response = await invoke<{ accepted: boolean }>("plugin:glass-camera|capture_photo");
+    if (response.accepted) {
+      setStatus("グラスで撮影しています…");
+    } else {
+      pendingGlassCapture = true;
+      setStatus("グラスカメラが準備中です。映像が始まり次第自動で撮影します。");
+    }
+  } catch (error) {
+    setStatus(`グラス撮影に失敗しました: ${String(error)}`);
+  }
+}
+
+let lastTriggerAt = 0;
+
+async function triggerCapture() {
+  // 音量スワイプは短時間に複数イベントが来るためまとめる。
+  const now = Date.now();
+  if (now - lastTriggerAt < 1200) return;
+  lastTriggerAt = now;
+
+  if (captureSource === "glass") {
+    if (!glassStreaming) {
+      pendingGlassCapture = true;
+      setStatus("グラスの映像を待っています（グラスを装着してください）。始まり次第自動で撮影します。");
+      return;
+    }
+    await requestGlassPhoto();
+    return;
+  }
+
+  const registration = await invoke<{ state: string }>(
+    "plugin:glass-camera|registration_state",
+  ).catch(() => null);
+  setStatus(
+    `グラスカメラが未接続です（登録状態: ${registration?.state ?? "不明"}）。「開始する」を押し直してください。`,
+  );
+}
+
+async function startTapMonitor() {
+  if (tapMonitorStarted) return;
+  tapMonitorStarted = true;
+  try {
+    const tapChannel = new Channel<RemoteTapEvent>();
+    tapChannel.onmessage = () => {
+      void triggerCapture();
+    };
+    await invoke("plugin:media-remote|start_remote", { channel: tapChannel });
+  } catch (error) {
+    tapMonitorStarted = false;
+    setStatus(`スワイプ監視を開始できませんでした: ${String(error)}`);
+  }
+}
+
+async function startSession() {
+  setStatus("グラスカメラに接続しています…");
+  await connectGlassCamera();
+  sessionActive = true;
+}
+
+async function stopSession() {
+  await invoke("plugin:glass-camera|stop_glass").catch(() => {});
+  await invoke("plugin:media-remote|stop_remote").catch(() => {});
+  tapMonitorStarted = false;
+  captureSource = null;
+  glassAwaitingRegistration = false;
+  sessionActive = false;
+  setStageMessage("「開始する」を押すとグラスのカメラに接続します。");
+}
+
+function installSessionToggle() {
+  sessionToggle?.addEventListener("click", async () => {
+    sessionToggle.disabled = true;
+    try {
+      if (sessionActive) {
+        await stopSession();
+        setStatus("停止しました。");
+      } else {
+        await startSession();
+        if (captureSource === "glass") {
+          setStatus("稼働中。グラスのタッチパッドをタップすると撮影します。");
+        }
+      }
+      renderSessionState();
+    } catch (error) {
+      setStatus(`開始できませんでした: ${String(error)}`);
+    } finally {
+      sessionToggle.disabled = false;
+    }
+  });
+}
+
+function renderGlassWatchState() {
+  if (!glassWatchToggle) return;
+  glassWatchToggle.textContent = glassWatchActive ? "監視中 … タップで停止" : "監視を開始";
+  glassWatchToggle.setAttribute("aria-pressed", glassWatchActive ? "true" : "false");
+}
+
+async function askAboutGlassPhoto(event: NewPhotoEvent) {
+  await runAskPipeline("metaglass_button", async () => {
+    setStatus(`メタグラスの写真${event.name ? `（${event.name}）` : ""}を受信しました。`);
+    return event.imageDataUrl;
+  });
+}
+
+async function startGlassWatch() {
+  const channel = new Channel<NewPhotoEvent>();
+  channel.onmessage = (event) => {
+    void askAboutGlassPhoto(event);
+  };
+  await invoke("plugin:photo-inbox|start_watching", { channel });
+  glassWatchActive = true;
+}
+
+async function stopGlassWatch() {
+  await invoke("plugin:photo-inbox|stop_watching");
+  glassWatchActive = false;
+}
+
+function installGlassWatchToggle() {
+  glassWatchToggle?.addEventListener("click", async () => {
+    glassWatchToggle.disabled = true;
+    try {
+      if (glassWatchActive) {
+        await stopGlassWatch();
+        setStatus("グラス写真監視を停止しました。");
+      } else {
+        await startGlassWatch();
+        setStatus("グラス写真監視中。カメラロールに入った新しい写真に自動回答します。");
+      }
+      renderGlassWatchState();
+    } catch (error) {
+      setStatus(`グラス写真監視を開始できませんでした: ${String(error)}`);
+    } finally {
+      glassWatchToggle.disabled = false;
+    }
+  });
+}
+
+function installStageTapCapture() {
+  const previewWrap = document.querySelector<HTMLElement>(".preview-wrap");
+  previewWrap?.addEventListener("click", () => {
+    if (sessionActive) {
+      void triggerCapture();
+    }
+  });
+}
+
+function installKeyboardFallback() {
   window.addEventListener("keydown", (event) => {
     const target = event.target as HTMLElement | null;
     const isTextInput =
@@ -527,9 +755,9 @@ function installMetaglassButtonBridge() {
       target?.tagName === "INPUT" ||
       target?.isContentEditable;
 
-    if (!isTextInput && event.code === "Space") {
+    if (!isTextInput && event.code === "Space" && sessionActive) {
       event.preventDefault();
-      void captureAndAsk("keyboard");
+      void triggerCapture();
     }
   });
 }
@@ -561,11 +789,31 @@ function installKnowledgeFilePicker() {
   });
 }
 
+const DEFAULT_API_URL = "https://enforcement-matthew-ignored-abilities.trycloudflare.com";
+const DEFAULT_API_TOKEN = "06c1aa1247069cee2256cbbda71d18cc2d0a14b57ef12015";
+
+function installApiSettings() {
+  if (apiUrlInput) {
+    apiUrlInput.value = localStorage.getItem("sg-api-url") || DEFAULT_API_URL;
+    apiUrlInput.addEventListener("change", () => {
+      localStorage.setItem("sg-api-url", apiUrlInput.value.trim());
+    });
+  }
+  if (apiTokenInput) {
+    apiTokenInput.value = localStorage.getItem("sg-api-token") || DEFAULT_API_TOKEN;
+    apiTokenInput.addEventListener("change", () => {
+      localStorage.setItem("sg-api-token", apiTokenInput.value.trim());
+    });
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
-  captureButton?.addEventListener("click", () => {
-    void captureAndAsk("app_button");
-  });
-  installMetaglassButtonBridge();
+  installApiSettings();
+  installSessionToggle();
+  installGlassWatchToggle();
+  installStageTapCapture();
+  installKeyboardFallback();
   installKnowledgeFilePicker();
-  void startCamera();
+  renderSessionState();
+  renderGlassWatchState();
 });
